@@ -2,6 +2,7 @@ defmodule Butler.Bot do
   @behaviour :websocket_client_handler
 
   def start_link(opts \\ []) do
+    Agent.start_link(fn -> HashSet.new end, name: __MODULE__)
     {:ok, json} = Butler.Rtm.start
     url = String.to_char_list(json.url)
     :websocket_client.start_link(url, __MODULE__, json)
@@ -16,6 +17,8 @@ defmodule Butler.Bot do
       groups: json.groups,
       users: json.users
     }
+
+    Handler.FooHandler.setup_responder()
 
     {:ok, slack}
   end
@@ -42,9 +45,21 @@ defmodule Butler.Bot do
     # {:ok, slack}
   end
 
-  defp handle_message(message = %{type: "message", text: "Hello Butler"}, slack) do
-    {:reply, {:text, encode("Top of the morning", message.channel)}, slack}
-    # send_message("Top of the morning", message.channel, slack)
+  defp handle_message(message = %{type: "message", text: text}, slack) do
+    Agent.get(__MODULE__, fn set ->
+      Enum.find_value(set, fn({regex, func}) ->
+        if Regex.match?(regex, text) do
+          matches = Regex.scan(regex, text)
+          response = func.(matches)
+          {:reply, {:text, encode(response, message.channel)}, slack}
+        end
+      end)
+    end)
+  end
+
+  def respond(regex, func) do
+    item = {regex, func}
+    Agent.update(__MODULE__, &Set.put(&1, item))
   end
 
   defp handle_message(_message, slack), do: {:ok, slack}
