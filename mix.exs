@@ -19,8 +19,12 @@ defmodule Butler.Mixfile do
   def application do
     [
       applications: [ :logger, :httpoison ],
-      mod: {Butler, plugins}
+      mod: {Butler, {adapter, plugins}}
     ]
+  end
+
+  def adapter do
+    Butler.Adapters.Console
   end
 
   def plugins do

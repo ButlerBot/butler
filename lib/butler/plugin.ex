@@ -8,34 +8,21 @@ defmodule Butler.Plugin do
 
       @before_compile Butler.Plugin
 
-
-      def handle_event({:message, text, channel, slack}, state) do
+      def handle_event({:message, text}, state) do
         if bot_mentioned?(text) do
-          parse_message(text) |> respond(state) |> handle_response(channel, slack)
+          strip_name(text)
+          |> respond(state)
+          |> handle_response
         else
-          hear(text, state) |> handle_response(channel, slack)
+          hear(text, state)
+          |> handle_response
         end
       end
 
-      defp handle_response({:noreply, state}, _channel, _slack), do: {:ok, state}
-
-      defp handle_response({:reply, response, state}, channel, slack) do
-        {:ok, msg} = response_message(response)
-        send_message(msg, channel, slack.socket)
+      defp handle_response({:noreply, state}), do: {:ok, state}
+      defp handle_response({:reply, response, state}) do
+        {:ok, response} = Butler.Bot.reply(response)
         {:ok, state}
-      end
-
-      def response_message(msg) when is_binary(msg) do
-        response_message({:text, msg})
-      end
-      def response_message({:code, msg}),  do: {:ok, "```#{msg}```"}
-      def response_message({:text, msg}),  do: {:ok, "#{msg}"}
-      def response_message({:quote, msg}), do: {:ok, ">#{msg}"}
-      def response_message(response) do
-        require Logger
-        
-        Logger.error "Unknown response type"
-        {:error, response}
       end
 
       def bot_mentioned?(text) do
@@ -44,14 +31,9 @@ defmodule Butler.Plugin do
         first |> String.downcase |> String.contains?(name)
       end
 
-      def parse_message(text) do
+      def strip_name(text) do
         [_ | msg] = String.split(text)
         Enum.join(msg, " ")
-      end
-
-      def send_message(text, channel, socket, client \\ :websocket_client) do
-        msg = Poison.encode!(%{ type: "message", text: text, channel: channel })
-        client.send({:text, msg}, socket)
       end
     end
   end
