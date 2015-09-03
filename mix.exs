@@ -30,7 +30,8 @@ defmodule Butler.Mixfile do
   def plugins do
     [
       {Butler.Plugins.Cowsay, []},
-      {Butler.Plugins.TestCount, []}
+      {Butler.Plugins.TestCount, []},
+      {Butler.Plugins.Decide, []}
     ]
   end
 
